@@ -1,1 +1,0 @@
-http://fun.alipay.com/down/index.htm?cid=shqiantaiqyym&pid=Q_ANDROID_SHQIANTAIQYYM
