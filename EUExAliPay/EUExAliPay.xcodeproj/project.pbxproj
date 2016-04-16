@@ -7,8 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F7D4D01D1A70E704007BC1C8 /* EUExAliPay.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = F7D4D01C1A70E704007BC1C8 /* EUExAliPay.h */; };
-		F7D4D01F1A70E704007BC1C8 /* EUExAliPay.m in Sources */ = {isa = PBXBuildFile; fileRef = F7D4D01E1A70E704007BC1C8 /* EUExAliPay.m */; };
+		4287EC4F1CC1CFA100EBD876 /* AlipaySDK.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = F7D4D30A1A71156C007BC1C8 /* AlipaySDK.framework */; };
+		4287EC501CC1CFA700EBD876 /* AlipaySDK.bundle in CopyFiles */ = {isa = PBXBuildFile; fileRef = F7D4D3091A71156C007BC1C8 /* AlipaySDK.bundle */; };
+		F7D4D01F1A70E704007BC1C8 /* EUExAliPay.m in Sources */ = {isa = PBXBuildFile; fileRef = F7D4D01E1A70E704007BC1C8 /* EUExAliPay.m */; settings = {COMPILER_FLAGS = "-fobjc-arc"; }; };
 		F7D4D2071A70EA77007BC1C8 /* base64.m in Sources */ = {isa = PBXBuildFile; fileRef = F7D4D1EE1A70EA77007BC1C8 /* base64.m */; };
 		F7D4D2081A70EA77007BC1C8 /* DataSigner.m in Sources */ = {isa = PBXBuildFile; fileRef = F7D4D1F11A70EA77007BC1C8 /* DataSigner.m */; };
 		F7D4D2091A70EA77007BC1C8 /* DataVerifier.m in Sources */ = {isa = PBXBuildFile; fileRef = F7D4D1F31A70EA77007BC1C8 /* DataVerifier.m */; };
@@ -28,10 +29,11 @@
 		F7D4D0171A70E704007BC1C8 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "include/$(PRODUCT_NAME)";
+			dstPath = "";
 			dstSubfolderSpec = 16;
 			files = (
-				F7D4D01D1A70E704007BC1C8 /* EUExAliPay.h in CopyFiles */,
+				4287EC501CC1CFA700EBD876 /* AlipaySDK.bundle in CopyFiles */,
+				4287EC4F1CC1CFA100EBD876 /* AlipaySDK.framework in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -502,6 +504,7 @@
 		F7D4D02E1A70E704007BC1C8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/EUExAliPay/sourceCode",
@@ -523,6 +526,7 @@
 		F7D4D02F1A70E704007BC1C8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_OBJC_ARC = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/EUExAliPay/sourceCode",

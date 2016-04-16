@@ -8,6 +8,7 @@
 
 #import "EUExAliPay.h"
 #import <AlipaySDK/AlipaySDK.h>
+#import "EUtility.h"
 @interface EUExAliPay()
 @property (nonatomic, retain) PartnerConfig * partnerConfig;
 @property (nonatomic, retain) NSMutableDictionary * productDic;
@@ -27,7 +28,6 @@
 
 -(void)dealloc{
     [self clean];
-    [super dealloc];
 }
 
 -(void)clean{
@@ -35,7 +35,6 @@
         _cbStr = nil;
     }
     if (_partnerConfig) {
-        [_partnerConfig release];
         _partnerConfig = nil;
     }
 }
@@ -56,7 +55,7 @@
     if ([inArguments count] == 5) {
         notifyUrl = [inArguments objectAtIndex:4];
     }
-    
+
     //设置appschame
     NSString *appScheme = nil;
     NSArray *scharray = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleURLTypes"];
@@ -81,7 +80,7 @@
     NSString * tradeNO = [inArguments objectAtIndex:0];
     NSString * productName = [inArguments objectAtIndex:1];
     NSString * productDescription = [inArguments objectAtIndex:2];
-    NSString * amount = [inArguments objectAtIndex:3];
+    NSString * amount = [NSString stringWithFormat:@"%@",[inArguments objectAtIndex:3]];
     
     [self.productDic setObject:tradeNO forKey:@"tradeNO"];//订单ID(由商家自行制定)
     [self.productDic setObject:productName forKey:@"productName"];//商品标题
@@ -185,7 +184,8 @@
 -(void)uexOnPayWithStatus:(int)inStatus des:(NSString *)inDes{
     inDes =[inDes stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
     NSString *jsStr = [NSString stringWithFormat:@"if(uexAliPay.onStatus!=null){uexAliPay.onStatus(%d,\'%@\')}",inStatus,inDes];
-    [meBrwView stringByEvaluatingJavaScriptFromString:jsStr];
+    [EUtility brwView:self.meBrwView evaluateScript:jsStr];
+
 }
 
 - (void)parseURL:(NSURL *)url application:(UIApplication *)application {
@@ -235,8 +235,7 @@
     }
 }
 -(void)delayCB {
-    
-    [meBrwView stringByEvaluatingJavaScriptFromString:self.cbStr];
+    [EUtility brwView:self.meBrwView evaluateScript:self.cbStr];
 }
 
 
