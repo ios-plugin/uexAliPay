@@ -7,7 +7,6 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "EUExBase.h"
 #import "EUExBaseDefine.h"
 #import "EUtility.h"
 #import "PartnerConfig.h"
@@ -15,7 +14,7 @@
 #import "DataVerifier.h"
 #import "ACPAliPayOrder.h"
 #import "DataVerifier.h"
-
+#import <AppCanKit/AppCanKit.h>
 #define UEX_CPAYSUCCESS			0
 #define UEX_CPAYING             1
 #define UEX_CPAYFAILED			2

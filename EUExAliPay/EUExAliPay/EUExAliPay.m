@@ -13,13 +13,14 @@
 @property (nonatomic, retain) PartnerConfig * partnerConfig;
 @property (nonatomic, retain) NSMutableDictionary * productDic;
 @property (nonatomic, copy)   NSString * cbStr;
+@property (nonatomic, copy)   NSArray *cbArr;
 @property (nonatomic, copy)   NSString *aliPaySignString;
 @end
 
 @implementation EUExAliPay
 
--(id)initWithBrwView:(EBrowserView *)eInBrwView {
-    if (self=[super initWithBrwView:eInBrwView]) {
+-(id)initWithWebViewEngine:(id<AppCanWebViewEngineObject>)engine{
+    if (self = [super initWithWebViewEngine:engine]) {
         self.productDic = [NSMutableDictionary dictionary];
         _partnerConfig = [[PartnerConfig alloc]init];
     }
@@ -81,7 +82,7 @@
     NSString * productName = [inArguments objectAtIndex:1];
     NSString * productDescription = [inArguments objectAtIndex:2];
     NSString * amount = [NSString stringWithFormat:@"%@",[inArguments objectAtIndex:3]];
-    
+    ACJSFunctionRef *func = JSFunctionArg(inArguments.lastObject);
     [self.productDic setObject:tradeNO forKey:@"tradeNO"];//订单ID(由商家自行制定)
     [self.productDic setObject:productName forKey:@"productName"];//商品标题
     [self.productDic setObject:productDescription forKey:@"productDescription"];//商品描述
@@ -107,15 +108,18 @@
          resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
          resultString = [resultDic objectForKey:@"memo"];
          if (resultStatus == 9000) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+             //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+             self.cbArr = func?@[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES,func]:@[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES];
          }
          else  if (resultStatus == 6001) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+             //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+             self.cbArr =func? @[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES,func]:@[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES];
          }
          else {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+             //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+             self.cbArr = func?@[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES,func]:@[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
          }
-         [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
+         [self performSelector:@selector(delayCB:) withObject:self.cbArr afterDelay:0.0];
      }];
 }
 
@@ -123,6 +127,7 @@
     //设置appschame
     NSString *appScheme = nil;
     NSString *orderString = nil;
+    ACJSFunctionRef *func = nil;
     NSArray *scharray = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleURLTypes"];
     if ([scharray count]>0) {
         NSDictionary *subDict = [scharray objectAtIndex:0];
@@ -135,6 +140,7 @@
     }
     if (inArguments.count > 0) {
         orderString = [inArguments objectAtIndex:0];
+         func = JSFunctionArg(inArguments.lastObject);
     }
     [[AlipaySDK defaultService] payOrder:orderString fromScheme:appScheme callback:^(NSDictionary *resultDic)
      {
@@ -143,15 +149,18 @@
          resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
          resultString = [resultDic objectForKey:@"memo"];
          if (resultStatus == 9000) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+             //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+              self.cbArr = func?@[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES,func]:@[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES];
          }
          else  if (resultStatus == 6001) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+             //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+             self.cbArr =func? @[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES,func]:@[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES];
          }
          else {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+             //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+             self.cbArr = func?@[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES,func]:@[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
          }
-         [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
+         [self performSelector:@selector(delayCB:) withObject:self.cbArr afterDelay:0.0];
      }];
 
 }
@@ -183,8 +192,11 @@
 
 -(void)uexOnPayWithStatus:(int)inStatus des:(NSString *)inDes{
     inDes =[inDes stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-    NSString *jsStr = [NSString stringWithFormat:@"if(uexAliPay.onStatus!=null){uexAliPay.onStatus(%d,\'%@\')}",inStatus,inDes];
-    [EUtility brwView:self.meBrwView evaluateScript:jsStr];
+   // NSString *jsStr = [NSString stringWithFormat:@"if(uexAliPay.onStatus!=null){uexAliPay.onStatus(%d,\'%@\')}",inStatus,inDes];
+    self.cbArr = @[@(inStatus),inDes];
+    //[EUtility brwView:self.meBrwView evaluateScript:jsStr];
+    [self.webViewEngine callbackWithFunctionKeyPath:@"uexAliPay.onStatus" arguments:ACArgsPack(@(inStatus),inDes)];
+    
 
 }
 
@@ -201,15 +213,18 @@
              resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
              resultString = [resultDic objectForKey:@"memo"];
              if (resultStatus == 9000) {
-                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+                  self.cbArr = @[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES];
              }
              else  if (resultStatus == 6001) {
-                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+                  self.cbArr = @[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES];
              }
              else {
-                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+                  self.cbArr = @[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
              }
-             [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
+             [self performSelector:@selector(delayCB:) withObject:self.cbArr afterDelay:0.0];
          }];
         
     }
@@ -222,20 +237,29 @@
             resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
             resultString = [resultDic objectForKey:@"memo"];
             if (resultStatus == 9000) {
-                self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+               // self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+                 self.cbArr = @[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES];
             }
             else  if (resultStatus == 6001) {
-                self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+               // self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+                 self.cbArr = @[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES];
             }
-            else {                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+            else {
+                //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+                 self.cbArr = @[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
             }
-            [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
+            [self performSelector:@selector(delayCB:) withObject:self.cbArr afterDelay:0.0];
         }];
         
     }
 }
--(void)delayCB {
-    [EUtility brwView:self.meBrwView evaluateScript:self.cbStr];
+-(void)delayCB:(NSArray *)inputArray {
+    //[EUtility brwView:self.meBrwView evaluateScript:self.cbStr];
+    [self.webViewEngine callbackWithFunctionKeyPath:@"uexAliPay.onStatus" arguments:ACArgsPack(inputArray[0],inputArray[1])];
+    if (inputArray.count >=3) {
+        [inputArray[2] executeWithArguments:ACArgsPack(inputArray[0],inputArray[1])];
+    }
+    
 }
 
 
