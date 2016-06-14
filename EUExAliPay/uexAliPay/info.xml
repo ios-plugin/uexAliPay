@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <uexplugins>
     <plugin
-        uexName="uexAliPay" version="3.0.10" build="10">
-        <info>10:更新支付宝SDK到15.1.3</info>
+        uexName="uexAliPay" version="4.0.0" build="11">
+        <info>11:支持引擎4.0，函数入参</info>
+        <build>10:更新支付宝SDK到15.1.3</build>
         <build>9:更新支付宝SDK到15.0.6</build>
         <build>8:更新支付宝SDK到2.2.1</build>
         <build>7:uexAliPay新增gotoPay传入服务器签名好的数据直接支付</build>
