@@ -15,10 +15,11 @@
 @property (nonatomic, copy)   NSString * cbStr;
 @property (nonatomic, copy)   NSArray *cbArr;
 @property (nonatomic, copy)   NSString *aliPaySignString;
+@property (nonatomic,strong) ACJSFunctionRef *func ;
 @end
 
 @implementation EUExAliPay
-static ACJSFunctionRef *func = nil;
+static EUExAliPay *pay = nil;
 -(id)initWithWebViewEngine:(id<AppCanWebViewEngineObject>)engine{
     if (self = [super initWithWebViewEngine:engine]) {
         self.productDic = [NSMutableDictionary dictionary];
@@ -82,12 +83,12 @@ static ACJSFunctionRef *func = nil;
     NSString * productName = [inArguments objectAtIndex:1];
     NSString * productDescription = [inArguments objectAtIndex:2];
     NSString * amount = [NSString stringWithFormat:@"%@",[inArguments objectAtIndex:3]];
-    func = JSFunctionArg(inArguments.lastObject);
+    self.func = JSFunctionArg(inArguments.lastObject);
     [self.productDic setObject:tradeNO forKey:@"tradeNO"];//订单ID(由商家自行制定)
     [self.productDic setObject:productName forKey:@"productName"];//商品标题
     [self.productDic setObject:productDescription forKey:@"productDescription"];//商品描述
     [self.productDic setObject:amount forKey:@"amount"];//商品价格
-    
+    pay = self;
     NSString *appScheme = self.partnerConfig.appScheme;
     //将商品信息拼接成字符串
     NSString* orderInfo = [self getOrderInfo];
@@ -222,8 +223,9 @@ static ACJSFunctionRef *func = nil;
                  //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
                  cbArr = @[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
              }
-             [self performSelector:@selector(delayCB:) withObject:cbArr afterDelay:0.0];
-             //[self delayCB:cbArr];
+             //[self performSelector:@selector(delayCB:) withObject:cbArr afterDelay:0.0];
+             [pay delayCB:cbArr];
+             
          }];
         
     }
@@ -247,72 +249,21 @@ static ACJSFunctionRef *func = nil;
                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
                 cbArr = @[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
             }
-            
-            [self performSelector:@selector(delayCB:) withObject:cbArr afterDelay:0.0];
+            [pay delayCB:cbArr];
         }];
-        
     }
-
+    
+    
     return YES;
 }
 - (void)parseURL:(NSURL *)url application:(UIApplication *)application {
     
-//    self.cbStr = nil;
-//    //跳转支付宝钱包进行支付，需要将支付宝钱包的支付结果回传给SDK
-//    if ([url.host isEqualToString:@"safepay"]) {
-//        [[AlipaySDK defaultService]
-//         processOrderWithPaymentResult:url
-//         standbyCallback:^(NSDictionary *resultDic) {
-//             int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
-//             NSString *resultString = nil; //本次操作返回的结果数据
-//             resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
-//             resultString = [resultDic objectForKey:@"memo"];
-//             if (resultStatus == 9000) {
-//                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
-//                 self.cbArr = @[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES];
-//             }
-//             else  if (resultStatus == 6001) {
-//                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
-//                 self.cbArr = @[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES];
-//             }
-//             else {
-//                 //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
-//                 self.cbArr = @[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
-//             }
-//             [self performSelector:@selector(delayCB:) withObject:self.cbArr afterDelay:0.0];
-//         }];
-//        
-//    }
-//    
-//    //支付宝钱包快登授权返回 authCode
-//    if ([url.host isEqualToString:@"platformapi"]){
-//        [[AlipaySDK defaultService] processAuthResult:url standbyCallback:^(NSDictionary *resultDic) {
-//            int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
-//            NSString *resultString = nil; //本次操作返回的结果数据
-//            resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
-//            resultString = [resultDic objectForKey:@"memo"];
-//            if (resultStatus == 9000) {
-//                // self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
-//                self.cbArr = @[@(UEX_CPAYSUCCESS),UEX_CPAYSUCCESSDES];
-//            }
-//            else  if (resultStatus == 6001) {
-//                // self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
-//                self.cbArr = @[@(UEX_CPAYCANCLE),UEX_CPAYCANCLEDES];
-//            }
-//            else {
-//                //self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
-//                self.cbArr = @[@(UEX_CPAYFAILED),UEX_CPAYFAILEDDES];
-//            }
-//            [self performSelector:@selector(delayCB:) withObject:self.cbArr afterDelay:0.0];
-//        }];
-//        
-//    }
-}
+   }
 -(void)delayCB:(NSArray *)inputArray {
     //[EUtility brwView:self.meBrwView evaluateScript:self.cbStr];
     [self.webViewEngine callbackWithFunctionKeyPath:@"uexAliPay.onStatus" arguments:ACArgsPack(inputArray[0],inputArray[1])];
-    [func executeWithArguments:ACArgsPack(inputArray[0],inputArray[1])];
-    func = nil;
+    [self.func executeWithArguments:ACArgsPack(inputArray[0],inputArray[1])];
+    self.func = nil;
     
 }
 
