@@ -8,235 +8,190 @@
 
 #import "EUExAliPay.h"
 #import <AlipaySDK/AlipaySDK.h>
-#import "EUtility.h"
-@interface EUExAliPay()
-@property (nonatomic, retain) PartnerConfig * partnerConfig;
-@property (nonatomic, retain) NSMutableDictionary * productDic;
-@property (nonatomic, copy)   NSString * cbStr;
-@property (nonatomic, copy)   NSString *aliPaySignString;
+#import <AppCanKit/ACEXTScope.h>
+#import "uexAliPayOrder.h"
+
+
+
+
+
+
+@interface EUExAliPay()<AppCanApplicationEventObserver>
+@property (nonatomic,strong)NSString *partnerID;
+@property (nonatomic,strong)NSString *sellerID;
+@property (nonatomic,strong)NSString *rsaPrivateKey;
+@property (nonatomic,strong)NSString *rsaPublicKey;
+@property (nonatomic,strong)NSString *notifyURL;
+@property (nonatomic,readonly)NSString *appURLScheme;
 @end
 
 @implementation EUExAliPay
 
--(id)initWithBrwView:(EBrowserView *)eInBrwView {
-    if (self=[super initWithBrwView:eInBrwView]) {
-        self.productDic = [NSMutableDictionary dictionary];
-        _partnerConfig = [[PartnerConfig alloc]init];
+
+
+
+- (instancetype)initWithWebViewEngine:(id<AppCanWebViewEngineObject>)engine{
+    self = [super initWithWebViewEngine:engine];
+    if (self) {
     }
     return self;
 }
 
--(void)dealloc{
+
+- (void)dealloc{
     [self clean];
 }
 
--(void)clean{
-    if (_cbStr) {
-        _cbStr = nil;
-    }
-    if (_partnerConfig) {
-        _partnerConfig = nil;
-    }
+- (void)clean{
+
 }
 
--(void)setPayInfo:(NSMutableArray *)inArguments{
-    
-    if (![inArguments isKindOfClass:[NSMutableArray class]] || [inArguments count] < 4) {
-        
-        return;
-        
-    }
-    
-    NSString * partnerID = [inArguments objectAtIndex:0];
-    NSString * sellerID = [inArguments objectAtIndex:1];
-    NSString * partnerPrivKey = [inArguments objectAtIndex:2];
-    NSString * alipayPubKey = [inArguments objectAtIndex:3];
-    NSString * notifyUrl = nil;
-    if ([inArguments count] == 5) {
-        notifyUrl = [inArguments objectAtIndex:4];
-    }
 
-    //设置appschame
-    NSString *appScheme = nil;
-    NSArray *scharray = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleURLTypes"];
-    if ([scharray count]>0) {
-        NSDictionary *subDict = [scharray objectAtIndex:0];
-        if ([subDict count]>0) {
-            NSArray *urlArray = [subDict objectForKey:@"CFBundleURLSchemes"];
-            if ([urlArray count]>0) {
-                appScheme = [urlArray objectAtIndex:0];
-            }
-        }
-    }
-    [self.partnerConfig setPartnerID:partnerID];
-    [self.partnerConfig setSellerID:sellerID];
-    [self.partnerConfig setAlipayPubKey:alipayPubKey];
-    [self.partnerConfig setPartnerPrivKey:partnerPrivKey];
-    [self.partnerConfig setNotifyUrl:notifyUrl];
-    [self.partnerConfig setAppScheme:appScheme];
+- (NSString *)appURLScheme{
+    static NSString *scheme = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        NSDictionary *schemeInfo = [[NSBundle mainBundle].infoDictionary[@"CFBundleURLTypes"] firstObject];
+        scheme = [schemeInfo[@"CFBundleURLSchemes"] firstObject];
+    });
+    return scheme;
 }
 
--(void)pay:(NSMutableArray *)inArguments{
-    NSString * tradeNO = [inArguments objectAtIndex:0];
-    NSString * productName = [inArguments objectAtIndex:1];
-    NSString * productDescription = [inArguments objectAtIndex:2];
-    NSString * amount = [NSString stringWithFormat:@"%@",[inArguments objectAtIndex:3]];
+
+- (void)setPayInfo:(NSMutableArray *)inArguments{
     
-    [self.productDic setObject:tradeNO forKey:@"tradeNO"];//订单ID(由商家自行制定)
-    [self.productDic setObject:productName forKey:@"productName"];//商品标题
-    [self.productDic setObject:productDescription forKey:@"productDescription"];//商品描述
-    [self.productDic setObject:amount forKey:@"amount"];//商品价格
-    
-    NSString *appScheme = self.partnerConfig.appScheme;
-    //将商品信息拼接成字符串
-    NSString* orderInfo = [self getOrderInfo];
-    //获取私钥并将商户信息签名,外部商户可以根据情况存放私钥和签名,只需要遵循RSA签名规范,并将签名字符串base64编码和UrlEncode
-    NSString* signedStr = [self doRsa:orderInfo];
-    
-    //将签名成功字符串格式化为订单字符串,请严格按照该格式
-    NSString *orderString = nil;
-    if (signedStr != nil) {
-        orderString = [NSString stringWithFormat:@"%@&sign=\"%@\"&sign_type=\"%@\"",
-                       orderInfo, signedStr, @"RSA"];
-    }
-    
-    [[AlipaySDK defaultService] payOrder:orderString fromScheme:appScheme callback:^(NSDictionary *resultDic)
-     {
-         int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
-         NSString *resultString = nil; //本次操作返回的结果数据
-         resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
-         resultString = [resultDic objectForKey:@"memo"];
-         if (resultStatus == 9000) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
-         }
-         else  if (resultStatus == 6001) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
-         }
-         else {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
-         }
-         [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
-     }];
+    ACArgsUnpack(NSString *partnerID,NSString *sellerID,NSString *rsaPrivateKey,NSString *rsaPublicKey,NSString *notifyURL) = inArguments;
+    self.partnerID = partnerID;
+    self.sellerID = sellerID;
+    self.rsaPrivateKey = rsaPrivateKey;
+    self.rsaPublicKey = rsaPublicKey;
+    self.notifyURL = notifyURL;
+
 }
+
+- (void)pay:(NSMutableArray *)inArguments{
+    
+    ACArgsUnpack(NSString *tradeNo,NSString* productName,NSString *productDescription,NSString *amount,ACJSFunctionRef *callback) = inArguments;
+    uexAliPayOrder *order = [uexAliPayOrder new];
+    // NOTE: partnerID设置
+    order.app_id = self.partnerID;
+    // NOTE: 支付接口名称
+    order.method = @"alipay.trade.app.pay";
+    // NOTE: 参数编码格式
+    order.charset = @"utf-8";
+    // NOTE: 当前时间戳
+    NSDateFormatter *formatter = [NSDateFormatter new];
+    [formatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+    order.timestamp = [formatter stringFromDate:[NSDate date]];
+    // NOTE: 支付版本
+    order.version = @"1.0";
+    // NOTE: sign_type设置
+    order.sign_type = @"RSA";
+    // NOTE: 商品数据
+    order.biz_content = [uexAliPayContent new];
+    order.biz_content.body = productDescription;
+    order.biz_content.seller_id = self.sellerID;
+    order.biz_content.subject = productName;
+    order.biz_content.out_trade_no = tradeNo;//订单ID（由商家自行制定）
+    order.biz_content.timeout_express = @"30m"; //超时时间设置
+    order.biz_content.total_amount = amount; //商品价格
+    order.type = uexAliPayOrderTypeV1;
+    NSString *orderString = [order orderStringSignedWithRSAPrivateKey:self.rsaPrivateKey];
+    [self setPayCompletionBlockWithCallback:callback];
+    [self startPayWithOrder:orderString];
+
+}
+
 
 - (void)gotoPay:(NSMutableArray *)inArguments {
-    //设置appschame
-    NSString *appScheme = nil;
-    NSString *orderString = nil;
-    NSArray *scharray = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleURLTypes"];
-    if ([scharray count]>0) {
-        NSDictionary *subDict = [scharray objectAtIndex:0];
-        if ([subDict count]>0) {
-            NSArray *urlArray = [subDict objectForKey:@"CFBundleURLSchemes"];
-            if ([urlArray count]>0) {
-                appScheme = [urlArray objectAtIndex:0];
-            }
+    [self payWithOrder:inArguments];
+    
+}
+
+
+- (void)payWithOrder:(NSMutableArray *)inArguments {
+    ACArgsUnpack(NSString *orderString,ACJSFunctionRef *callback) = inArguments;
+    [self setPayCompletionBlockWithCallback:callback];
+    [self startPayWithOrder:orderString];
+}
+
+- (NSString *)generatePayOrder:(NSMutableArray *)inArguments{
+    ACArgsUnpack(NSDictionary *info) = inArguments;
+    uexAliPayOrder *order = [uexAliPayOrder new];
+    
+    NSString *privateKey = stringArg(info[@"private_key"]);
+    NSDictionary *biz = dictionaryArg(info[@"biz_content"]);
+    // NOTE: app_id设置
+    order.app_id = stringArg(info[@"app_id"]);
+    // NOTE: 支付接口名称
+    order.method = @"alipay.trade.app.pay";
+    // NOTE: 参数编码格式
+    order.charset = @"utf-8";
+    // NOTE: 当前时间戳
+    NSDateFormatter *formatter = [NSDateFormatter new];
+    [formatter setDateFormat:@"yyyy-MM-dd HH:mm:ss"];
+    order.timestamp = [formatter stringFromDate:[NSDate date]];
+    // NOTE: 支付版本
+    order.version = @"1.0";
+    // NOTE: sign_type设置
+    order.sign_type = @"RSA";
+    // NOTE: 商品数据
+    order.biz_content = [uexAliPayContent new];
+    order.biz_content.body = stringArg(biz[@"body"]);
+    order.biz_content.seller_id = stringArg(biz[@"seller_id"]);
+    order.biz_content.subject = stringArg(biz[@"subject"]);
+    order.biz_content.out_trade_no = stringArg(biz[@"out_trade_no"]);//订单ID（由商家自行制定）
+    order.biz_content.timeout_express = @"30m"; //超时时间设置
+    order.biz_content.total_amount = stringArg(biz[@"total_amount"]); //商品价格
+    order.type = uexAliPayOrderTypeV2;
+    return [order orderStringSignedWithRSAPrivateKey:privateKey];
+
+}
+
+
+
+- (void)startPayWithOrder:(NSString *)orderString{
+    [[AlipaySDK defaultService] payOrder:orderString fromScheme:self.appURLScheme callback:_globalCallbackCompletion];
+}
+
+
+static CompletionBlock _globalCallbackCompletion = nil;
+
+- (void)setPayCompletionBlockWithCallback:(ACJSFunctionRef *)callback{
+    @weakify(self);
+    _globalCallbackCompletion = ^(NSDictionary *resultDic){
+        @strongify(self);
+        NSUInteger resultStatus = numberArg(resultDic[@"resultStatus"]).integerValue;
+        NSString *resultString = stringArg(resultDic[@"memo"]);
+        UEX_ERROR error = kUexNoError;
+        switch (resultStatus) {
+            case 9000:
+                resultString = @"支付成功";
+                break;
+            case 6001:
+                error = uexErrorMake(4,@"uexAliPay: 支付取消");
+                break;
+            default:
+                error = uexErrorMake(2,[@"uexAlipay: " stringByAppendingString:resultString]);
+                break;
         }
-    }
-    if (inArguments.count > 0) {
-        orderString = [inArguments objectAtIndex:0];
-    }
-    [[AlipaySDK defaultService] payOrder:orderString fromScheme:appScheme callback:^(NSDictionary *resultDic)
-     {
-         int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
-         NSString *resultString = nil; //本次操作返回的结果数据
-         resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
-         resultString = [resultDic objectForKey:@"memo"];
-         if (resultStatus == 9000) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
-         }
-         else  if (resultStatus == 6001) {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
-         }
-         else {
-             self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
-         }
-         [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
-     }];
-
-}
--(NSString *)getOrderInfo {
-    
-    ACPAliPayOrder *order = [[ACPAliPayOrder alloc] init];
-    order.partner = self.partnerConfig.partnerID;//合作者身份ID,以 2088 开头由 16 位纯数字组成的字符串
-    order.seller = self.partnerConfig.sellerID;//支付宝收款账号,手机号码或邮箱格式
-    order.tradeNO = [self.productDic objectForKey:@"tradeNO"];//订单ID(由商家自行制定)
-    order.productName = [self.productDic objectForKey:@"productName"];//商品标题
-    order.productDescription = [self.productDic objectForKey:@"productDescription"];//商品描述
-    order.amount = [self.productDic objectForKey:@"amount"];//商品价格
-    order.notifyURL =  self.partnerConfig.notifyUrl;//回调URL,(服务器异 步通知页 面路径)支付宝服务器主动通知商户 网站里指定的页面 http 路径
-    order.service = @"mobile.securitypay.pay";//接口名称。固定值。
-    order.inputCharset = @"utf-8";//商户网站使用的编码格式,固定为 utf-8。
-     //order.itBPay = @"30m";
-     //order.showUrl = @"m.alipay.com";
-     //order.paymentType = @"1";
-    return [order description];
-}
-////获取私钥并将商户信息签名,外部商户可以根据情况存放私钥和签名,只需要遵循RSA签名规范,并将签名字符串base64编码和UrlEncode
--(NSString *)doRsa:(NSString *)orderInfo {
-    id<DataSigner> signer;
-    signer = CreateRSADataSigner(self.partnerConfig.partnerPrivKey);
-    NSString *signedString = [signer signString:orderInfo];
-    self.aliPaySignString = signedString;
-    return signedString;
+        
+        [self.webViewEngine callbackWithFunctionKeyPath:@"uexAliPay.onStatus" arguments:ACArgsPack(error,resultString)];
+        [callback executeWithArguments:ACArgsPack(error,resultString)];
+        
+        _globalCallbackCompletion = nil;
+    };
 }
 
--(void)uexOnPayWithStatus:(int)inStatus des:(NSString *)inDes{
-    inDes =[inDes stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
-    NSString *jsStr = [NSString stringWithFormat:@"if(uexAliPay.onStatus!=null){uexAliPay.onStatus(%d,\'%@\')}",inStatus,inDes];
-    [EUtility brwView:self.meBrwView evaluateScript:jsStr];
-
-}
-
-- (void)parseURL:(NSURL *)url application:(UIApplication *)application {
-    
-    self.cbStr = nil;
-    //跳转支付宝钱包进行支付，需要将支付宝钱包的支付结果回传给SDK
++ (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation{
     if ([url.host isEqualToString:@"safepay"]) {
-        [[AlipaySDK defaultService]
-         processOrderWithPaymentResult:url
-         standbyCallback:^(NSDictionary *resultDic) {
-             int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
-             NSString *resultString = nil; //本次操作返回的结果数据
-             resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
-             resultString = [resultDic objectForKey:@"memo"];
-             if (resultStatus == 9000) {
-                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
-             }
-             else  if (resultStatus == 6001) {
-                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
-             }
-             else {
-                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
-             }
-             [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
-         }];
-        
+        [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:_globalCallbackCompletion];
     }
     
-    //支付宝钱包快登授权返回 authCode
-    if ([url.host isEqualToString:@"platformapi"]){
-        [[AlipaySDK defaultService] processAuthResult:url standbyCallback:^(NSDictionary *resultDic) {
-            int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
-            NSString *resultString = nil; //本次操作返回的结果数据
-            resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
-            resultString = [resultDic objectForKey:@"memo"];
-            if (resultStatus == 9000) {
-                self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
-            }
-            else  if (resultStatus == 6001) {
-                self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
-            }
-            else {                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
-            }
-            [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
-        }];
-        
-    }
+    return YES;
 }
--(void)delayCB {
-    [EUtility brwView:self.meBrwView evaluateScript:self.cbStr];
-}
+
+
 
 
 @end

@@ -4,5 +4,7 @@
 		<method name="setPayInfo"></method>
         <method name="pay"></method>
         <method name="gotoPay"></method>
+        <method name="payWithOrder"></method>
+        <method name="generatePayOrder"></method>
 	</plugin>
 </uexplugins>
