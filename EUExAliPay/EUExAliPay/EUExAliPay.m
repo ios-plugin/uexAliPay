@@ -10,7 +10,7 @@
 #import <AlipaySDK/AlipaySDK.h>
 #import <AppCanKit/ACEXTScope.h>
 #import "uexAliPayOrder.h"
-
+#import "uexAliPayAuthInfo.h"
 
 
 
@@ -134,7 +134,7 @@
     // NOTE: 支付版本
     order.version = @"1.0";
     // NOTE: sign_type设置
-    order.sign_type = @"RSA";
+    order.useRSA2 = numberArg(info[@"rsa2"]).boolValue;
     // NOTE: 商品数据
     order.biz_content = [uexAliPayContent new];
     order.biz_content.body = stringArg(biz[@"body"]);
@@ -151,15 +151,69 @@
 
 
 - (void)startPayWithOrder:(NSString *)orderString{
-    [[AlipaySDK defaultService] payOrder:orderString fromScheme:self.appURLScheme callback:_globalCallbackCompletion];
+    [[AlipaySDK defaultService] payOrder:orderString fromScheme:self.appURLScheme callback:_globalPayCallbackCompletion];
+}
+
+- (void)auth:(NSMutableArray *)inArguments{
+    ACArgsUnpack(NSString *authInfo,ACJSFunctionRef *callback) = inArguments;
+
+    _globalAuthCallbackCompletion = ^(NSDictionary *resultDict){
+        NSMutableDictionary *dict = [resultDict mutableCopy];
+        NSUInteger resultStatus = numberArg(resultDict[@"resultStatus"]).integerValue;
+
+
+
+        //success=true&auth_code=9c11732de44f4f1790b63978b6fbOX53&result_code=200&alipay_open_id=20881001757376426161095132517425&user_id=2088003646494707
+        NSURLComponents *components = [[NSURLComponents alloc]init];
+        components.query = stringArg(resultDict[@"result"]);
+        NSMutableDictionary *result = [NSMutableDictionary dictionary];
+        for (NSURLQueryItem *item in components.queryItems) {
+            [result setValue:item.value forKey:item.name];
+        }
+        NSInteger resultCode = numberArg(result[@"result_code"]).integerValue;
+        
+        [dict setValue:stringArg(result[@"auth_code"]) forKey:@"authCode"];
+        [dict setValue:stringArg(result[@"alipay_open_id"]) forKey:@"alipayOpenId"];
+
+        
+        UEX_ERROR error = kUexNoError;
+        if (resultStatus != 9000 || resultCode != 200) {
+            error = uexErrorMake(1,[@"uexAliPay.auth failed: " stringByAppendingString:stringArg(resultDict[@"memo"])]);
+        }
+        
+        [callback executeWithArguments:ACArgsPack(error,dict.ac_JSONFragment)];
+        _globalAuthCallbackCompletion = nil;
+    };
+    
+    [[AlipaySDK defaultService] auth_V2WithInfo:authInfo fromScheme:self.appURLScheme callback:_globalAuthCallbackCompletion];
 }
 
 
-static CompletionBlock _globalCallbackCompletion = nil;
+- (NSString *)getAuthInfo:(NSMutableArray *)inArguments{
+    ACArgsUnpack(NSDictionary *info) = inArguments;
+    NSString *privateKey = stringArg(info[@"rsaPrivate"]);
+    UEX_PARAM_GUARD_NOT_NIL(privateKey,nil);
+    uexAliPayAuthInfo *authInfo = [[uexAliPayAuthInfo alloc]init];
+    authInfo.pid = stringArg(info[@"pid"]);
+    authInfo.appID = stringArg(info[@"appId"]);
+    authInfo.targetID = stringArg(info[@"targetId"]);
+    authInfo.useRSA2 = numberArg(info[@"rsa2"]).boolValue;
+    authInfo.authType = stringArg(info[@"authType"]);
+    return [authInfo authInfoStringSignedWithPrivateKey:privateKey];
+    
+    
+}
+
+
+
+
+
+static CompletionBlock _globalPayCallbackCompletion = nil;
+static CompletionBlock _globalAuthCallbackCompletion = nil;
 
 - (void)setPayCompletionBlockWithCallback:(ACJSFunctionRef *)callback{
     @weakify(self);
-    _globalCallbackCompletion = ^(NSDictionary *resultDic){
+    _globalPayCallbackCompletion = ^(NSDictionary *resultDic){
         @strongify(self);
         NSUInteger resultStatus = numberArg(resultDic[@"resultStatus"]).integerValue;
         NSString *resultString = stringArg(resultDic[@"memo"]);
@@ -179,13 +233,14 @@ static CompletionBlock _globalCallbackCompletion = nil;
         [self.webViewEngine callbackWithFunctionKeyPath:@"uexAliPay.onStatus" arguments:ACArgsPack(error,resultString)];
         [callback executeWithArguments:ACArgsPack(error,resultString)];
         
-        _globalCallbackCompletion = nil;
+        _globalPayCallbackCompletion = nil;
     };
 }
 
 + (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation{
     if ([url.host isEqualToString:@"safepay"]) {
-        [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:_globalCallbackCompletion];
+        [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:_globalPayCallbackCompletion];
+        [[AlipaySDK defaultService] processAuth_V2Result:url standbyCallback:_globalAuthCallbackCompletion];
     }
     
     return YES;

@@ -99,15 +99,12 @@ typedef NS_ENUM(NSInteger,uexAliPayOrderType){
 @property (nonatomic, copy) NSString *sign_type;
 
 
-///**
-// *  获取订单信息串
-// *
-// *  @param bEncoded       订单信息串中的各个value是否encode
-// *                        非encode订单信息串，用于生成签名
-// *                        encode订单信息串 + 签名，用于最终的支付请求订单信息串
-// */
-//- (NSString *)orderInfoEncoded:(BOOL)bEncoded;
-//
+@property (nonatomic, assign)BOOL useRSA2;
+
+
+
+
+
 
 - (NSString *)orderStringSignedWithRSAPrivateKey:(NSString *)privateKey;
 

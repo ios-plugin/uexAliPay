@@ -23,8 +23,8 @@
 
 
 #import "uexAliPayOrder.h"
-#import "DataVerifier.h"
-#import "DataSigner.h"
+#import "RSADataSigner.h"
+#import "RSADataVerifier.h"
 
 @implementation uexAliPayContent
 
@@ -87,7 +87,7 @@
     [dict setValue:self.timestamp?:@"" forKey:@"timestamp"];
     [dict setValue:@"1.0" forKey:@"version"];
     [dict setValue:_biz_content.description?:@"" forKey:@"biz_content"];
-    [dict setValue:@"RSA" forKey:@"sign_type"];
+    [dict setValue:self.useRSA2 ? @"RSA2" : @"RSA" forKey:@"sign_type"];
     [dict setValue:self.format forKey:@"format"];
     [dict setValue:self.return_url forKey:@"return_url"];
     [dict setValue:self.notify_url forKey:@"notify_url"];
@@ -153,11 +153,12 @@
 - (NSString *)orderStringSignedWithRSAPrivateKey:(NSString *)privateKey{
     NSString *orderInfo = [self orderInfoEncoded:NO];
     NSString *orderInfoEncoded = [self orderInfoEncoded:YES];
-    id<DataSigner> signer = CreateRSADataSigner(privateKey);
-    NSString *signedString = [signer signString:orderInfo];
+    RSADataSigner *signer = [[RSADataSigner alloc] initWithPrivateKey:privateKey];
+    NSString *signedString = [signer signString:orderInfo withRSA2:self.useRSA2];
+    NSString *signType = self.useRSA2 ? @"RSA2" : @"RSA";
     switch (self.type) {
         case uexAliPayOrderTypeV1:
-            return [NSString stringWithFormat:@"%@&sign=%@&sign_type=RSA",orderInfoEncoded, signedString];
+            return [NSString stringWithFormat:@"%@&sign=%@&sign_type=%@",orderInfoEncoded, signedString,signType];
         case uexAliPayOrderTypeV2:
             return [NSString stringWithFormat:@"%@&sign=%@",orderInfoEncoded, signedString];
     }
