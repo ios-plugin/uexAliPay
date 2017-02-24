@@ -87,6 +87,7 @@
     order.version = @"1.0";
     // NOTE: sign_type设置
     order.sign_type = @"RSA";
+    order.notify_url = self.notifyURL;
     // NOTE: 商品数据
     order.biz_content = [uexAliPayContent new];
     order.biz_content.body = productDescription;

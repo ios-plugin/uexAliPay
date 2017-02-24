@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <uexplugins>
     <plugin
-        uexName="uexAliPay" version="4.0.2" build="2">
-        <info>2:添加登录相关接口</info>
+        uexName="uexAliPay" version="4.0.3" build="3">
+        <info>3:修复notifyURL无效的问题</info>
+        <build>2:添加登录相关接口</build>
         <build>1:SDK更新,添加新接口以支持新版"app接口支付"</build>
         <build>0:支付宝插件</build>
     </plugin>
