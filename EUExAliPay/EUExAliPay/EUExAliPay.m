@@ -136,6 +136,8 @@
     order.version = @"1.0";
     // NOTE: sign_type设置
     order.useRSA2 = numberArg(info[@"rsa2"]).boolValue;
+    //notify_url
+    order.notify_url = stringArg(info[@"notify_url"]);
     // NOTE: 商品数据
     order.biz_content = [uexAliPayContent new];
     order.biz_content.body = stringArg(biz[@"body"]);
@@ -152,6 +154,7 @@
 
 
 - (void)startPayWithOrder:(NSString *)orderString{
+    //NSLog(@"----startPayWithOrder-orderString:%@",orderString);
     [[AlipaySDK defaultService] payOrder:orderString fromScheme:self.appURLScheme callback:_globalPayCallbackCompletion];
 }
 
@@ -239,6 +242,7 @@ static CompletionBlock _globalAuthCallbackCompletion = nil;
 }
 
 + (BOOL)application:(UIApplication *)application openURL:(NSURL *)url sourceApplication:(NSString *)sourceApplication annotation:(id)annotation{
+    //NSLog(@"----application-openURL:%@---sourceApplication:%@",url,sourceApplication);
     if ([url.host isEqualToString:@"safepay"]) {
         [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:_globalPayCallbackCompletion];
         [[AlipaySDK defaultService] processAuth_V2Result:url standbyCallback:_globalAuthCallbackCompletion];
