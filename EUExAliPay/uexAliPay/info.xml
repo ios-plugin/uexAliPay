@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <uexplugins>
     <plugin
-        uexName="uexAliPay" version="3.0.12" build="12">
+        uexName="uexAliPay" version="3.0.13" build="20190522">
+        <info>13:增加方法isAliPayInstalled,检测支付宝是否已安装</info>
         <info>12:支付取消支付回调问题修改</info>
         <build>11:修改打包失败的bug</build>
         <build>10:更新支付宝SDK到15.1.3</build>

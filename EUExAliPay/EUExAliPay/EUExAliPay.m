@@ -50,6 +50,13 @@
     }
 }
 
+//支付宝是否安装，已安装yes，未安装no
+- (BOOL)isAliPayInstalled:(NSMutableArray *)inArguments{
+    NSURL * alipay_app_url = [NSURL URLWithString:@"alipay://"];
+    BOOL ali = [[UIApplication sharedApplication] canOpenURL:alipay_app_url];
+    return ali;
+}
+
 -(void)setPayInfo:(NSMutableArray *)inArguments{
     
     if (![inArguments isKindOfClass:[NSMutableArray class]] || [inArguments count] < 4) {
