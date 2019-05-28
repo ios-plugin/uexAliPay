@@ -2,6 +2,7 @@
 <uexplugins>
     <plugin name="uexAliPay">
 		<method name="setPayInfo"></method>
+        <method name="isAliPayInstalled"></method>
         <method name="pay"></method>
         <method name="gotoPay"></method>
 	</plugin>

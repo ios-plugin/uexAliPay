@@ -9,6 +9,9 @@
 #import "EUExAliPay.h"
 #import <AlipaySDK/AlipaySDK.h>
 #import "EUtility.h"
+
+#define EUExAliPaystandbyCallback @"EUExAliPaystandbyCallback"
+
 @interface EUExAliPay()
 @property (nonatomic, retain) PartnerConfig * partnerConfig;
 @property (nonatomic, retain) NSMutableDictionary * productDic;
@@ -22,11 +25,19 @@
     if (self=[super initWithBrwView:eInBrwView]) {
         self.productDic = [NSMutableDictionary dictionary];
         _partnerConfig = [[PartnerConfig alloc]init];
+        [self addNotification];
     }
     return self;
 }
 
+- (void)addNotification
+{
+    //支付成功或失败的通知
+    [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(aliPaystandbyCallback:) name:EUExAliPaystandbyCallback object:nil];
+}
+
 -(void)dealloc{
+    [[NSNotificationCenter defaultCenter] removeObserver:self name:EUExAliPaystandbyCallback object:nil];
     [self clean];
 }
 
@@ -37,6 +48,13 @@
     if (_partnerConfig) {
         _partnerConfig = nil;
     }
+}
+
+//支付宝是否安装，已安装yes，未安装no
+- (BOOL)isAliPayInstalled:(NSMutableArray *)inArguments{
+    NSURL * alipay_app_url = [NSURL URLWithString:@"alipay://"];
+    BOOL ali = [[UIApplication sharedApplication] canOpenURL:alipay_app_url];
+    return ali;
 }
 
 -(void)setPayInfo:(NSMutableArray *)inArguments{
@@ -117,6 +135,26 @@
          }
          [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
      }];
+}
+
+// 阿里支付回调
+- (void)aliPaystandbyCallback:(NSNotification *)notification{
+    //回调接口
+    NSDictionary *resultDic = notification.object;
+    int  resultStatus; //本次操作的状态返回值,标 识本次调用的结果
+    NSString *resultString = nil; //本次操作返回的结果数据
+    resultStatus = [[resultDic objectForKey:@"resultStatus"] intValue];
+    resultString = [resultDic objectForKey:@"memo"];
+    if (resultStatus == 9000) {
+        self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYSUCCESS,UEX_CPAYSUCCESSDES];
+    }
+    else  if (resultStatus == 6001) {
+        self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYCANCLE,UEX_CPAYCANCLEDES];
+    }
+    else {                 self.cbStr = [NSString stringWithFormat:@"if(%@!=null){%@(%d,\'%@\');}",@"uexAliPay.onStatus",@"uexAliPay.onStatus",UEX_CPAYFAILED,UEX_CPAYFAILEDDES];
+    }
+    [self performSelector:@selector(delayCB) withObject:self afterDelay:1.0];
+    
 }
 
 - (void)gotoPay:(NSMutableArray *)inArguments {
@@ -236,6 +274,36 @@
 }
 -(void)delayCB {
     [EUtility brwView:self.meBrwView evaluateScript:self.cbStr];
+}
+
+
++ (BOOL)application:(UIApplication *)application
+            openURL:(NSURL *)url
+  sourceApplication:(NSString *)sourceApplication
+         annotation:(id)annotation {
+    
+    if ([url.host isEqualToString:@"safepay"]) {
+        //跳转支付宝钱包进行支付，处理支付结果
+        [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:^(NSDictionary *resultDic) {
+            NSLog(@"result = %@",resultDic);
+            //支付状态通知
+            [[NSNotificationCenter defaultCenter] postNotificationName:EUExAliPaystandbyCallback object:resultDic];
+        }];
+    }
+    return YES;
+}
+
++ (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<NSString*, id> *)options
+{
+    if ([url.host isEqualToString:@"safepay"]) {
+        //跳转支付宝钱包进行支付，处理支付结果
+        [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:^(NSDictionary *resultDic) {
+            NSLog(@"result = %@",resultDic);
+            //支付状态通知
+            [[NSNotificationCenter defaultCenter] postNotificationName:EUExAliPaystandbyCallback object:resultDic];
+        }];
+    }
+    return YES;
 }
 
 
