@@ -251,6 +251,22 @@ static CompletionBlock _globalAuthCallbackCompletion = nil;
     return YES;
 }
 
+//新增方法，修复跳转支付宝没有回调方法
++ (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<NSString*, id> *)options
+{
+    if ([url.host isEqualToString:@"safepay"]) {
+        [[AlipaySDK defaultService] processOrderWithPaymentResult:url standbyCallback:_globalPayCallbackCompletion];
+        [[AlipaySDK defaultService] processAuth_V2Result:url standbyCallback:_globalAuthCallbackCompletion];
+    }
+    return YES;
+}
+
+//支付宝是否安装，已安装yes，未安装no
+- (BOOL)isAliPayInstalled:(NSMutableArray *)inArguments{
+    NSURL * alipay_app_url = [NSURL URLWithString:@"alipay://"];
+    BOOL ali = [[UIApplication sharedApplication] canOpenURL:alipay_app_url];
+    return ali;
+}
 
 
 
